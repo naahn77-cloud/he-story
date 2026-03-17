@@ -1,0 +1,132 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>He_Story: Circular Time</title>
+    <style>
+        body {
+            margin: 0;
+            padding: 0;
+            background-color: #0f0f19; /* BG_COLOR */
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            height: 100vh;
+            overflow: hidden;
+            color: white;
+            font-family: 'Arial', sans-serif;
+        }
+        canvas {
+            max-width: 100%;
+            max-height: 100%;
+            touch-action: none;
+        }
+    </style>
+</head>
+<body>
+    <canvas id="timeCanvas"></canvas>
+
+    <script>
+        const canvas = document.getElementById('timeCanvas');
+        const ctx = canvas.getContext('2d');
+
+        // 설정 값 (Pygame과 동일)
+        const HIGHLIGHT_COLORS = {
+            sec: '#00ffff',   // Cyan
+            min: '#00c896',   // Green-ish
+            hr: '#ffa500',    // Orange
+            day: '#ff6464',   // Red-ish
+            month: '#b464ff'  // Purple
+        };
+        const TRACK_COLOR = '#28283c';
+        const NODE_OFF_COLOR = '#3c3c50';
+
+        function resize() {
+            const size = Math.min(window.innerWidth, window.innerHeight);
+            canvas.width = size * 2; // 고해상도 대응 (Retina)
+            canvas.height = size * 2;
+            canvas.style.width = size + 'px';
+            canvas.style.height = size + 'px';
+            ctx.scale(2, 2);
+        }
+
+        window.addEventListener('resize', resize);
+        resize();
+
+        function getPos(centerX, centerY, radius, angleDeg) {
+            const angleRad = (angleDeg - 90) * Math.PI / 180;
+            return {
+                x: centerX + radius * Math.cos(angleRad),
+                y: centerY + radius * Math.sin(angleRad)
+            };
+        }
+
+        function drawOrbit(centerX, centerY, currentVal, totalVal, radius, dotSize, color) {
+            // 궤적 배경 선
+            ctx.beginPath();
+            ctx.arc(centerX, centerY, radius, 0, Math.PI * 2);
+            ctx.strokeStyle = TRACK_COLOR;
+            ctx.lineWidth = 1;
+            ctx.stroke();
+
+            for (let i = 1; i <= totalVal; i++) {
+                const angle = (360 / totalVal) * i;
+                const pos = getPos(centerX, centerY, radius, angle);
+
+                ctx.beginPath();
+                if (i < currentVal) {
+                    ctx.fillStyle = color;
+                    ctx.arc(pos.x, pos.y, dotSize, 0, Math.PI * 2);
+                } else if (i === currentVal) {
+                    // 현재 시점 강조 (White Glow)
+                    ctx.fillStyle = '#ffffff';
+                    ctx.arc(pos.x, pos.y, dotSize + 2, 0, Math.PI * 2);
+                    ctx.shadowBlur = 10;
+                    ctx.shadowColor = color;
+                } else {
+                    ctx.fillStyle = NODE_OFF_COLOR;
+                    ctx.arc(pos.x, pos.y, 2, 0, Math.PI * 2);
+                }
+                ctx.fill();
+                ctx.shadowBlur = 0; // 그림자 초기화
+            }
+        }
+
+        function render() {
+            const size = canvas.width / 2;
+            const center = { x: size / 2, y: size / 2 };
+            const now = new Date();
+
+            // 배경 클리어
+            ctx.fillStyle = '#0f0f19';
+            ctx.fillRect(0, 0, size, size);
+
+            // 데이터 정의 (모바일 화면에 맞춰 반지름 비율 조정)
+            const baseUnit = size / 10; 
+            const orbits = [
+                { name: 'month', curr: now.getMonth() + 1, total: 12, rad: baseUnit * 1.2, size: 5, col: HIGHLIGHT_COLORS.month },
+                { name: 'day',   curr: now.getDate(),      total: 30, rad: baseUnit * 2.0, size: 4, col: HIGHLIGHT_COLORS.day },
+                { name: 'hr',    curr: now.getHours(),     total: 24, rad: baseUnit * 2.8, size: 4, col: HIGHLIGHT_COLORS.hr },
+                { name: 'min',   curr: now.getMinutes(),   total: 60, rad: baseUnit * 3.6, size: 3, col: HIGHLIGHT_COLORS.min },
+                { name: 'sec',   curr: now.getSeconds(),   total: 60, rad: baseUnit * 4.4, size: 3, col: HIGHLIGHT_COLORS.sec }
+            ];
+
+            orbits.forEach(orbit => {
+                drawOrbit(center.x, center.y, orbit.curr, orbit.total, orbit.rad, orbit.size, orbit.col);
+            });
+
+            // 중앙 연도 표시
+            ctx.fillStyle = '#ffffff';
+            ctx.font = 'bold 20px Arial';
+            ctx.textAlign = 'center';
+            ctx.textBaseline = 'middle';
+            ctx.fillText(now.getFullYear(), center.x, center.y);
+
+            requestAnimationFrame(render);
+        }
+
+        render();
+    </script>
+</body>
+</html>
